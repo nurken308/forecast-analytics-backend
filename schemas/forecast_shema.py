@@ -33,3 +33,6 @@ class OLSForecastRequest(BaseModel):
     horizon: int = Field(3, ge=1, le=12)
     future_start: Optional[date] = Field(None, example="2026-01-01")
     with_macro: bool = True
+
+class SimpleForecastRequest(BaseModel):
+    segment_id: str
