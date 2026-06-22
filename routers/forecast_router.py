@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 import pathlib
 from service.ols_forecast import load_macro, fit_segment_model, forecast_segment
 from schemas.forecast_shema import SimpleForecastRequest
+from service.refresh_service import refresh_forecast, get_saved_forecast
 
 router = APIRouter(
     prefix="/OLS",
@@ -64,3 +65,11 @@ def ols_forecast(payload: SimpleForecastRequest):
         ]
     }
 
+@router.get("/forecast-cache/{segment_id}")
+def forecast_cache(segment_id: str):
+    return get_saved_forecast(segment_id)
+
+
+@router.post("/refresh/{segment_id}")
+def refresh(segment_id: str):
+    return refresh_forecast(segment_id, force=True)
