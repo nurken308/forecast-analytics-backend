@@ -25,12 +25,12 @@ def get_last_month_end():
     last_day_prev = first_day - pd.Timedelta(days=1)
     return last_day_prev.strftime("%Y%m%d")
 
-def load_oracle_pivot(segment_id: str):
+def load_oracle_pivot(segment_id: str, base_ymd: str | None = None):
     if segment_id not in SEGMENT_FILTERS:
         raise ValueError(f"Unknown segment_id: {segment_id}")
 
     filter_info = SEGMENT_FILTERS[segment_id]
-    day = get_last_month_end()
+    day = base_ymd or get_last_month_end()
 
     query = f"""
 
