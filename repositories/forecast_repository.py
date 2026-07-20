@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+from datetime import datetime
 
 from models.models import ForecastRun, ForecastValue
 
@@ -18,13 +19,16 @@ class ForecastRepository:
         parent_run_id: int | None = None,
         status: str = "current",
     ):
+        now = datetime.utcnow()
         run = ForecastRun(
             forecast_type=forecast_type,
             segment_id=segment_id,
             model_name=model_name,
             parent_run_id=parent_run_id,
             status=status,
-        )
+            created_at=now,
+            updated_at=now,
+            )
 
         self.session.add(run)
         await self.session.flush()
@@ -110,7 +114,13 @@ class ForecastRepository:
         value.abs_error = round(abs_error, 2)
         value.pct_error = round(pct_error, 4) if pct_error is not None else None
         value.status = "fact_available"
+        run = await self.session.get(
+            ForecastRun,
+            run_id,
+        )
 
+        if run is not None:
+            run.updated_at = datetime.utcnow()
         await self.session.commit()
         await self.session.refresh(value)
 

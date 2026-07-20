@@ -17,9 +17,14 @@ class Prognoz(Base):
     id = Column(Integer, primary_key=True)
     segment_id = Column(String(50), nullable=False, server_default="retail")
     base_ymd = Column(String(8), nullable=False)
-    od = Column(Numeric(20,2), nullable=False, server_default='0')
-    prosrochka_1 = Column(Numeric(20,2), nullable=False, server_default='0')
-    
+    od = Column(Numeric(20, 2), nullable=False, server_default='0')
+    prosrochka_1 = Column(Numeric(20, 2), nullable=False, server_default='0')
+
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+    )
 class ForecastRun(Base):
     __tablename__ = "forecast_runs"
     metadata = models_metadata
@@ -31,7 +36,17 @@ class ForecastRun(Base):
     horizon_months = Column(Integer, nullable=False, server_default="3")
     status = Column(String(30), nullable=False, server_default="active")  # active / archived
     parent_run_id = Column(Integer, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+    )
+
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+    )
 
     values = relationship("ForecastValue", back_populates="run")
 
@@ -43,7 +58,7 @@ class ForecastValue(Base):
     id = Column(Integer, primary_key=True)
     run_id = Column(Integer, ForeignKey("forecast_runs.id"), nullable=False)
 
-    period_month = Column(String(7), nullable=False)  # 2026-06
+    period_month = Column(String(10), nullable=False)  # 2026-06
     forecast_value = Column(Numeric(20, 2), nullable=False)
     fact_value = Column(Numeric(20, 2), nullable=True)
 

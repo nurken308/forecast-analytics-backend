@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from models.models import Prognoz
-
+from datetime import datetime
 
 class EzmesRepository:
     def __init__(self, session: AsyncSession):
@@ -25,6 +25,18 @@ class EzmesRepository:
             .order_by(Prognoz.base_ymd.desc())
             .limit(1)
         )
+        return result.scalar_one_or_none()
+    async def get_latest_update_time(self, segment_id: str):
+        result = await self.session.execute(
+            select(Prognoz.updated_at)
+            .where(
+                Prognoz.segment_id == segment_id,
+                Prognoz.updated_at.is_not(None),
+            )
+            .order_by(Prognoz.updated_at.desc())
+            .limit(1)
+        )
+
         return result.scalar_one_or_none()
     async def get_earliest(self, segment_id: str):
         result = await self.session.execute(
@@ -67,34 +79,77 @@ class EzmesRepository:
         )
         return result.scalar_one_or_none()
 
-    async def upsert_history(self, segment_id: str, rows: list[dict]):
+    async def upsert_history(
+        self,
+        segment_id: str,
+        rows: list[dict],
+    ):
         inserted = 0
         updated = 0
+        unchanged = 0
 
         for row in rows:
-            base_ymd = str(row.get("base_ymd"))
+            base_ymd = str(
+                row.get("base_ymd")
+            )
+
+            new_od = float(
+                row.get("od", 0) or 0
+            )
+
+            new_prosrochka_1 = float(
+                row.get(
+                    "prosrochka_1",
+                    0,
+                )
+                or 0
+            )
 
             result = await self.session.execute(
                 select(Prognoz).where(
-                    Prognoz.segment_id == segment_id,
-                    Prognoz.base_ymd == base_ymd,
+                    Prognoz.segment_id
+                    == segment_id,
+                    Prognoz.base_ymd
+                    == base_ymd,
                 )
             )
-            existing = result.scalar_one_or_none()
+
+            existing = (
+                result.scalar_one_or_none()
+            )
 
             if existing:
-                existing.od = row.get("od", 0) or 0
-                existing.prosrochka_1 = row.get("prosrochka_1", 0) or 0
-                updated += 1
+                has_changes = (
+                    float(existing.od)
+                    != new_od
+                    or float(
+                        existing.prosrochka_1
+                    )
+                    != new_prosrochka_1
+                )
+
+                if has_changes:
+                    existing.od = new_od
+                    existing.prosrochka_1 = (
+                        new_prosrochka_1
+                    )
+
+                    updated += 1
+                else:
+                    unchanged += 1
+
             else:
                 self.session.add(
                     Prognoz(
                         segment_id=segment_id,
                         base_ymd=base_ymd,
-                        od=row.get("od", 0) or 0,
-                        prosrochka_1=row.get("prosrochka_1", 0) or 0,
+                        od=new_od,
+                        prosrochka_1=(
+                            new_prosrochka_1
+                        ),
                     )
                 )
+
                 inserted += 1
 
         await self.session.commit()
@@ -103,7 +158,12 @@ class EzmesRepository:
             "segment_id": segment_id,
             "inserted": inserted,
             "updated": updated,
-            "total": inserted + updated,
+            "unchanged": unchanged,
+            "total": (
+                inserted
+                + updated
+                + unchanged
+            ),
         }
 
     async def replace_all(self, segment_id: str, rows: list[dict]):
